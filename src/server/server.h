@@ -233,7 +233,7 @@ typedef struct {
             uint8_t     volume;
             uint8_t     attenuation;
             uint8_t     timeofs;
-            int16_t     pos[3];     // saved in case entity is freed
+            int32_t pos[3]; //saved in case entity is freed //qb: bigmaps, was int16_t
         };
     };
 } message_packet_t;

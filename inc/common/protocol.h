@@ -27,9 +27,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define PROTOCOL_VERSION_OLD        26
 #define PROTOCOL_VERSION_DEFAULT    34
 #define PROTOCOL_VERSION_R1Q2       35
-#define PROTOCOL_VERSION_Q2PRO      36
-#define PROTOCOL_VERSION_MVD        37 // not used for UDP connections
-#define PROTOCOL_VERSION_EXTENDED   3434
+//qb: bigmap, was 36, 37, 3434.  BIG FIXME: disable all non-bigmap protocols? no way to check demos 
+#define PROTOCOL_VERSION_Q2PRO                 436
+#define PROTOCOL_VERSION_MVD                   437  // not used for UDP connections
+#define PROTOCOL_VERSION_EXTENDED              4434
 
 #define PROTOCOL_VERSION_R1Q2_MINIMUM           1903    // b6377
 #define PROTOCOL_VERSION_R1Q2_UCMD              1904    // b7387
@@ -305,6 +306,49 @@ typedef enum {
 // entity_state_t communication
 
 // try to pack the common update flags into the first byte
+
+#if USE_BIGMAP_EXTENSION  //qb: more efficient packing sequence
+#define U_ORIGIN1       BIT_ULL(0)
+#define U_ORIGIN2       BIT_ULL(1)
+#define U_ANGLE2        BIT_ULL(2)
+#define U_ORIGIN3       BIT_ULL(3)
+#define U_FRAME8        BIT_ULL(4)      // frame is a byte
+#define U_NUMBER16      BIT_ULL(5)
+#define U_REMOVE        BIT_ULL(6)      // REMOVE this entity, don't add it
+#define U_MOREBITS1     BIT_ULL(7)      // read one additional byte
+
+// second byte
+#define U_RENDERFX16    BIT_ULL(8)      // NUMBER8 is implicit if not set
+#define U_ANGLE3        BIT_ULL(9)
+#define U_ANGLE1        BIT_ULL(10)
+#define U_MODEL         BIT_ULL(11)
+#define U_OLDORIGIN     BIT_ULL(12)     // fullbright, etc
+#define U_ANGLE16       BIT_ULL(13)
+#define U_SOUND         BIT_ULL(14)     // autorotate, trails, etc
+#define U_MOREBITS2     BIT_ULL(15)     // read one additional byte
+
+// third byte
+#define U_SKIN8         BIT_ULL(16)
+#define U_EFFECTS8      BIT_ULL(17)     // frame is a short
+#define U_EVENT         BIT_ULL(18)     // 8 + 16 = 32
+#define U_EFFECTS16     BIT_ULL(19)     // 8 + 16 = 32
+#define U_RENDERFX8     BIT_ULL(20)     // weapons, flags, etc
+#define U_FRAME16       BIT_ULL(21)
+#define U_SOLID         BIT_ULL(22)
+#define U_MOREBITS3     BIT_ULL(23)     // read one additional byte
+
+// fourth byte
+#define U_MODEL2        BIT_ULL(24)     // FIXME: get rid of this
+#define U_MODEL3        BIT_ULL(25)
+#define U_MODEL4        BIT_ULL(26)
+#define U_SKIN16        BIT_ULL(27)
+#define U_MODEL16       BIT_ULL(28)
+#define U_MOREFX8       BIT_ULL(29)
+#define U_ALPHA         BIT_ULL(30)
+#define U_MOREBITS4     BIT_ULL(31)     // read one additional byte
+
+#else  //qb: old protocol
+
 #define U_ORIGIN1       BIT_ULL(0)
 #define U_ORIGIN2       BIT_ULL(1)
 #define U_ANGLE2        BIT_ULL(2)
@@ -343,6 +387,7 @@ typedef enum {
 #define U_MOREFX8       BIT_ULL(29)
 #define U_ALPHA         BIT_ULL(30)
 #define U_MOREBITS4     BIT_ULL(31)     // read one additional byte
+#endif
 
 // fifth byte
 #define U_SCALE         BIT_ULL(32)

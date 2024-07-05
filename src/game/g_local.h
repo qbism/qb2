@@ -27,8 +27,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define GAME_INCLUDE
 #include "shared/game.h"
 
-// features this game supports
-#define G_FEATURES  (GMF_PROPERINUSE|GMF_WANT_ALL_DISCONNECTS|GMF_ENHANCED_SAVEGAMES)
+// features this game supports  //qb: bigmap requires extensions
+#define G_FEATURES  (GMF_PROPERINUSE|GMF_WANT_ALL_DISCONNECTS|GMF_ENHANCED_SAVEGAMES|GMF_PROTOCOL_EXTENSIONS)
 
 // the "gameversion" client command will print this plus compile date
 #define GAMEVERSION "baseq2"

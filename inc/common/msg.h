@@ -27,9 +27,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 // comparsion easier
 typedef struct {
     uint16_t    number;
-    int16_t     origin[3];
+    int32_t origin[3];  //qb: bigmaps, was int16_t
     int16_t     angles[3];
-    int16_t     old_origin[3];
+    int32_t old_origin[3];  //qb: bigmaps, was int16_t
     uint16_t    modelindex;
     uint16_t    modelindex2;
     uint16_t    modelindex3;
@@ -108,6 +108,7 @@ void    MSG_WriteLong64(int64_t c);
 void    MSG_WriteString(const char *s);
 void    MSG_WritePos(const vec3_t pos);
 void    MSG_WriteAngle(float f);
+void    MSG_WritePMCoord(int in); //qb: bigmaps
 #if USE_CLIENT
 void    MSG_FlushBits(void);
 void    MSG_WriteBits(int value, int bits);
@@ -141,6 +142,7 @@ int     MSG_ReadShort(void);
 int     MSG_ReadWord(void);
 int     MSG_ReadLong(void);
 int64_t MSG_ReadLong64(void);
+int     MSG_ReadPMCoord(void); //qb: bigmaps
 size_t  MSG_ReadString(char *dest, size_t size);
 size_t  MSG_ReadStringLine(char *dest, size_t size);
 #if USE_CLIENT

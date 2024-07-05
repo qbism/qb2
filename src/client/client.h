@@ -171,7 +171,7 @@ typedef struct {
     usercmd_t    cmd;
     usercmd_t    cmds[CMD_BACKUP];    // each mesage will send several old cmds
     unsigned     cmdNumber;
-    short        predicted_origins[CMD_BACKUP][3];    // for debug comparing against server
+    int          predicted_origins[CMD_BACKUP][3];  //qb: bigmaps, was short  // for debug comparing against server
     client_history_t    history[CMD_BACKUP];
     unsigned    initialSeq;
 

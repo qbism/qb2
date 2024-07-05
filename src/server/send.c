@@ -557,9 +557,9 @@ static void emit_snd(const client_t *client, const message_packet_t *msg)
     MSG_WriteShort(msg->sendchan);
 
     if (flags & SND_POS) {
-        for (int i = 0; i < 3; i++) {
-            MSG_WriteShort(msg->pos[i]);
-        }
+        MSG_WritePMCoord(msg->pos[0]); //qb: bigmaps
+        MSG_WritePMCoord(msg->pos[1]);
+        MSG_WritePMCoord(msg->pos[2]);
     }
 }
 

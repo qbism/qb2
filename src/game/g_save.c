@@ -305,7 +305,11 @@ static const save_field_t clientfields[] = {
 #define _OFS CLOFS
     I(ps.pmove.pm_type),
 
+#if USE_BIGMAP_EXTENSION
+    IA(ps.pmove.origin, 3),  //qb: bigmaps, was SA
+#else
     SA(ps.pmove.origin, 3),
+#endif
     SA(ps.pmove.velocity, 3),
     B(ps.pmove.pm_flags),
     B(ps.pmove.pm_time),

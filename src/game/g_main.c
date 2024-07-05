@@ -139,7 +139,7 @@ void InitGame(void)
     deathmatch = gi.cvar("deathmatch", "0", CVAR_LATCH);
     coop = gi.cvar("coop", "0", CVAR_LATCH);
     skill = gi.cvar("skill", "1", CVAR_LATCH);
-    maxentities = gi.cvar("maxentities", "1024", CVAR_LATCH);
+    maxentities = gi.cvar("maxentities", "8192", CVAR_LATCH); //qb: bigmaps, was 1024
 
     // change anytime vars
     dmflags = gi.cvar("dmflags", "0", CVAR_SERVERINFO);
@@ -151,7 +151,7 @@ void InitGame(void)
     filterban = gi.cvar("filterban", "1", 0);
 
     g_select_empty = gi.cvar("g_select_empty", "0", CVAR_ARCHIVE);
-    g_protocol_extensions = gi.cvar("g_protocol_extensions", "0", CVAR_LATCH);
+    g_protocol_extensions = gi.cvar("g_protocol_extensions", "1", CVAR_LATCH);  //qb: bigmaps need, was 0
 
     run_pitch = gi.cvar("run_pitch", "0.002", 0);
     run_roll = gi.cvar("run_roll", "0.005", 0);
@@ -170,6 +170,7 @@ void InitGame(void)
     // obtain server features
     sv_features = gi.cvar("sv_features", NULL, 0);
 
+    sv_features->value = G_FEATURES; //qb: bigmaps need
     // enable protocol extensions if supported
     if (sv_features && (int)sv_features->value & GMF_PROTOCOL_EXTENSIONS && (int)g_protocol_extensions->value) {
         features |= GMF_PROTOCOL_EXTENSIONS;

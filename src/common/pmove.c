@@ -36,7 +36,7 @@ typedef struct {
     cplane_t    groundplane;
     int         groundcontents;
 
-    short       previous_origin[3];
+    int         previous_origin[3]; //qb: bigmaps, was short
     bool        ladder;
 } pml_t;
 
@@ -924,7 +924,7 @@ static void PM_SnapPosition(void)
 {
     int     sign[3];
     int     i, j, bits;
-    short   base[3];
+    int     base[3]; //qb: bigmaps, was short
     // try all single bits first
     static const byte jitterbits[8] = {0, 4, 1, 2, 3, 5, 6, 7};
 
@@ -968,8 +968,8 @@ PM_InitialSnapPosition
 static void PM_InitialSnapPosition(void)
 {
     int        x, y, z;
-    short      base[3];
-    static const short offset[3] = { 0, -1, 1 };
+    int        base[3]; //qb: bigmaps, was short
+    static const int offset[3] = { 0, -1, 1 }; //qb: bigmaps, was short
 
     VectorCopy(pm->s.origin, base);
 

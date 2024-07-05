@@ -176,10 +176,46 @@ MSG_WriteCoord
 =============
 */
 
-static inline void MSG_WriteCoord(float f)
+//qb: qbsp 24-bit coordinates from Kmquake2
+#define BIT_23  0x00800000
+#define UPRBITS 0xFF000000
+
+inline void MSG_WriteCoord(float f)
 {
+#if USE_BIGMAP_EXTENSION
+    int tmp;
+    byte trans1;
+    unsigned short trans2;
+
+    tmp = f * 8; // 1/8 granulation, leaves bounds of +/-1M in signed 24-bit form
+    trans1 = tmp >> 16; // bits 16-23
+    trans2 = tmp; // bits 0-15
+
+    // Don't mess with sign bits on this end to allow overflow (map wrap-around).
+
+    MSG_WriteByte(trans1);
+    MSG_WriteShort(trans2);
+#else
     MSG_WriteShort(COORD2SHORT(f));
+#endif
 }
+
+inline void MSG_WritePMCoord(int in)
+{
+#if USE_BIGMAP_EXTENSION
+    byte trans1;
+    unsigned short trans2;
+
+    trans1 = in >> 16; // bits 16-23
+    trans2 = in; // bits 0-15
+
+    MSG_WriteByte(trans1);
+    MSG_WriteShort(trans2);
+#else
+    MSG_WriteShort(in);
+#endif
+}
+
 
 /*
 =============
@@ -718,9 +754,9 @@ void MSG_WriteDeltaEntity(const entity_packed_t *from,
     else if (bits & U_RENDERFX16)
         MSG_WriteShort(to->renderfx);
 
-    if (bits & U_ORIGIN1) MSG_WriteShort(to->origin[0]);
-    if (bits & U_ORIGIN2) MSG_WriteShort(to->origin[1]);
-    if (bits & U_ORIGIN3) MSG_WriteShort(to->origin[2]);
+    if (bits & U_ORIGIN1) MSG_WritePMCoord(to->origin[0]);  //qb: bigmaps, was MSG_WriteShort
+    if (bits & U_ORIGIN2) MSG_WritePMCoord(to->origin[1]);
+    if (bits & U_ORIGIN3) MSG_WritePMCoord(to->origin[2]);
 
     if (bits & U_ANGLE16) {
         if (bits & U_ANGLE1) MSG_WriteShort(to->angles[0]);
@@ -733,9 +769,9 @@ void MSG_WriteDeltaEntity(const entity_packed_t *from,
     }
 
     if (bits & U_OLDORIGIN) {
-        MSG_WriteShort(to->old_origin[0]);
-        MSG_WriteShort(to->old_origin[1]);
-        MSG_WriteShort(to->old_origin[2]);
+        MSG_WritePMCoord(to->old_origin[0]);  //qb: bigmaps, was MSG_WriteShort
+        MSG_WritePMCoord(to->old_origin[1]);
+        MSG_WritePMCoord(to->old_origin[2]);
     }
 
     if (bits & U_SOUND) {
@@ -878,9 +914,9 @@ void MSG_WriteDeltaPlayerstate_Default(const player_packed_t *from, const player
         MSG_WriteByte(to->pmove.pm_type);
 
     if (pflags & PS_M_ORIGIN) {
-        MSG_WriteShort(to->pmove.origin[0]);
-        MSG_WriteShort(to->pmove.origin[1]);
-        MSG_WriteShort(to->pmove.origin[2]);
+        MSG_WritePMCoord(to->pmove.origin[0]);  //qb: bigmaps, was MSG_WriteShort
+        MSG_WritePMCoord(to->pmove.origin[1]);
+        MSG_WritePMCoord(to->pmove.origin[2]);
     }
 
     if (pflags & PS_M_VELOCITY) {
@@ -1104,12 +1140,12 @@ int MSG_WriteDeltaPlayerstate_Enhanced(const player_packed_t    *from,
         MSG_WriteByte(to->pmove.pm_type);
 
     if (pflags & PS_M_ORIGIN) {
-        MSG_WriteShort(to->pmove.origin[0]);
-        MSG_WriteShort(to->pmove.origin[1]);
+        MSG_WritePMCoord(to->pmove.origin[0]);  //qb: bigmaps, was MSG_WriteShort
+        MSG_WritePMCoord(to->pmove.origin[1]);
     }
 
     if (eflags & EPS_M_ORIGIN2)
-        MSG_WriteShort(to->pmove.origin[2]);
+        MSG_WritePMCoord(to->pmove.origin[2]);  //qb: bigmaps, was MSG_WriteShort
 
     if (pflags & PS_M_VELOCITY) {
         MSG_WriteShort(to->pmove.velocity[0]);
@@ -1313,12 +1349,12 @@ void MSG_WriteDeltaPlayerstate_Packet(const player_packed_t *from,
         MSG_WriteByte(to->pmove.pm_type);
 
     if (pflags & PPS_M_ORIGIN) {
-        MSG_WriteShort(to->pmove.origin[0]);
-        MSG_WriteShort(to->pmove.origin[1]);
+        MSG_WritePMCoord(to->pmove.origin[0]);  //qb: bigmaps, was MSG_WriteShort
+        MSG_WritePMCoord(to->pmove.origin[1]);
     }
 
     if (pflags & PPS_M_ORIGIN2)
-        MSG_WriteShort(to->pmove.origin[2]);
+        MSG_WritePMCoord(to->pmove.origin[2]);  //qb: bigmaps, was MSG_WriteShort
 
     //
     // write the rest of the player_state_t
@@ -1539,11 +1575,54 @@ size_t MSG_ReadStringLine(char *dest, size_t size)
     return len;
 }
 
+//qb: qbsp 24-bit coordinates from Kmquake2
+inline int MSG_ReadPMCoord(void) {
+#if USE_BIGMAP_EXTENSION
+    int tmp;
+    byte trans1;
+    unsigned short trans2;
+
+    trans1 = MSG_ReadByte();
+    trans2 = MSG_ReadShort();
+
+    tmp    = trans1 << 16; // bits 16-23
+    tmp += trans2;         // bits 0-15
+
+    // Sign bit 23 means it's negative, so fill upper
+    // 8 bits with 1s for 2's complement negative.
+    if (tmp & BIT_23)
+        tmp |= UPRBITS;
+    return tmp;
+#else
+    return MSG_ReadShort();
+#endif
+}
+
+
 #if USE_CLIENT || USE_MVD_CLIENT
 
 static inline float MSG_ReadCoord(void)
 {
+#if USE_BIGMAP_EXTENSION
+    int tmp;
+	byte trans1;
+	unsigned short trans2;
+
+	trans1 = MSG_ReadByte();
+	trans2 = MSG_ReadShort();
+
+	tmp = trans1 <<16;	// bits 16-23
+	tmp += trans2;		// bits 0-15
+
+	// Sign bit 23 means it's negative, so fill upper
+	// 8 bits with 1s for 2's complement negative.
+	if (tmp & BIT_23)	
+		tmp |= UPRBITS;
+
+	return SHORT2COORD(tmp);	// restore 1/8 granulation
+#else
     return SHORT2COORD(MSG_ReadShort());
+#endif
 }
 
 #if USE_SERVER
@@ -1555,6 +1634,8 @@ void MSG_ReadPos(vec3_t pos)
     pos[1] = MSG_ReadCoord();
     pos[2] = MSG_ReadCoord();
 }
+
+
 
 static inline float MSG_ReadAngle(void)
 {
@@ -1948,6 +2029,95 @@ void MSG_ParseDeltaEntity(entity_state_t            *to,
         if (bits & U_SCALE)
             ext->scale = MSG_ReadByte() / 16.0f;
     }
+
+#if USE_BITCOUNT_DEBUG  //qb:  show which bits really get used the most
+
+#if USE_BIGMAP_EXTENSION
+    bitc[34]++;
+    if (bits & U_ORIGIN1) bitc[0]++;
+    if (bits & U_ORIGIN2) bitc[1]++;
+    if (bits & U_ANGLE2) bitc[2]++;
+    if (bits & U_ORIGIN3) bitc[3]++;
+    if (bits & U_FRAME8) bitc[4]++;
+    if (bits & U_NUMBER16) bitc[5]++;
+    //U_REMOVE counted in parse packets
+    if (bits & U_MOREBITS1) bitc[7]++;
+    if (bits & U_RENDERFX16) bitc[8]++;
+    if (bits & U_ANGLE3) bitc[9]++;
+    if (bits & U_ANGLE1) bitc[10]++;
+    if (bits & U_MODEL) bitc[11]++;
+    if (bits & U_OLDORIGIN) bitc[12]++;
+    if (bits & U_ANGLE16) bitc[13]++;
+    if (bits & U_SOUND) bitc[14]++;
+    if (bits & U_MOREBITS2) bitc[15]++;
+    if (bits & U_SKIN8) bitc[16]++;
+    if (bits & U_EFFECTS8) bitc[17]++;
+    if (bits & U_EVENT) bitc[18]++;
+    if (bits & U_EFFECTS16) bitc[19]++;
+    if (bits & U_RENDERFX8) bitc[20]++;
+    if (bits & U_FRAME16) bitc[21]++;
+    if (bits & U_SOLID) bitc[22]++;
+    if (bits & U_MOREBITS3) bitc[23]++;
+    if (bits & U_MODEL2) bitc[24]++;
+    if (bits & U_MODEL3) bitc[25]++;
+    if (bits & U_MODEL4) bitc[26]++;
+    if (bits & U_SKIN16) bitc[27]++;
+    if (bits & U_MODEL16) bitc[28]++;
+    if (bits & U_MOREFX8) bitc[29]++;
+    if (bits & U_ALPHA) bitc[30]++;
+    if (bits & U_MOREBITS4) bitc[31]++;
+    if (bits & U_SCALE) bitc[32]++;
+    if (bits & U_MOREFX16) bitc[33]++;
+#else
+    bitc[34]++;
+    if (bits & U_ORIGIN1) bitc[0]++;
+    if (bits & U_ORIGIN2) bitc[1]++;
+    if (bits & U_ANGLE2) bitc[2]++;
+    if (bits & U_ANGLE3) bitc[3]++;
+    if (bits & U_FRAME8) bitc[4]++;
+    if (bits & U_EVENT) bitc[5]++;
+    //U_REMOVE counted in parse packets
+    if (bits & U_MOREBITS1) bitc[7]++;
+    if (bits & U_NUMBER16) bitc[8]++;
+    if (bits & U_ORIGIN3) bitc[9]++;
+    if (bits & U_ANGLE1) bitc[10]++;
+    if (bits & U_MODEL) bitc[11]++;
+    if (bits & U_RENDERFX8) bitc[12]++;
+    if (bits & U_ANGLE16) bitc[13]++;
+    if (bits & U_EFFECTS8) bitc[14]++;
+    if (bits & U_MOREBITS2) bitc[15]++;
+    if (bits & U_SKIN8) bitc[16]++;
+    if (bits & U_FRAME16) bitc[17]++;
+    if (bits & U_RENDERFX16) bitc[18]++;
+    if (bits & U_EFFECTS16) bitc[19]++;
+    if (bits & U_MODEL2) bitc[20]++;
+    if (bits & U_MODEL3) bitc[21]++;
+    if (bits & U_MODEL4) bitc[22]++;
+    if (bits & U_MOREBITS3) bitc[23]++;
+    if (bits & U_OLDORIGIN) bitc[24]++;
+    if (bits & U_SKIN16) bitc[25]++;
+    if (bits & U_SOUND) bitc[26]++;
+    if (bits & U_SOLID) bitc[27]++;
+    if (bits & U_MODEL16) bitc[28]++;
+    if (bits & U_MOREFX8) bitc[29]++;
+    if (bits & U_ALPHA) bitc[30]++;
+    if (bits & U_MOREBITS4) bitc[31]++;
+    if (bits & U_SCALE) bitc[32]++;
+    if (bits & U_MOREFX16) bitc[33]++;
+#endif
+    if (bits & U_OLDORIGIN) {
+        Com_Printf("%5i byte1: b1 %5i  b2 %5i  b3 %5i  b4 %5i  b5 %5i  b6 %5i  b7 %5i\n"
+                   "%5i byte2: b1 %5i  b2 %5i  b3 %5i  b4 %5i  b5 %5i  b6 %5i  b7 %5i\n"
+                   "%5i byte3: b1 %5i  b2 %5i  b3 %5i  b4 %5i  b5 %5i  b6 %5i  b7 %5i\n"
+                   "%5i byte4: b1 %5i  b2 %5i  b3 %5i  b4 %5i  b5 %5i  b6 %5i  b7 %5i\n"
+                   "%5i byte5: b1 %5i  b2 %5i\n\n", 
+        bitc[34], bitc[0], bitc[1], bitc[2], bitc[3], bitc[4], bitc[5], bitc[6],
+        bitc[7], bitc[8], bitc[9], bitc[10], bitc[11], bitc[12], bitc[13], bitc[14],
+        bitc[15], bitc[16], bitc[17], bitc[18], bitc[19], bitc[20], bitc[21], bitc[22],
+        bitc[23], bitc[24], bitc[25], bitc[26], bitc[27], bitc[28], bitc[29], bitc[30],
+        bitc[31], bitc[32], bitc[33]);
+    }
+#endif //bit count
 }
 
 #endif // USE_CLIENT || USE_MVD_CLIENT
@@ -1983,9 +2153,9 @@ void MSG_ParseDeltaPlayerstate_Default(const player_state_t *from,
         to->pmove.pm_type = MSG_ReadByte();
 
     if (flags & PS_M_ORIGIN) {
-        to->pmove.origin[0] = MSG_ReadShort();
-        to->pmove.origin[1] = MSG_ReadShort();
-        to->pmove.origin[2] = MSG_ReadShort();
+        to->pmove.origin[0] = MSG_ReadPMCoord();  //qb: bigmaps, was MSG_ReadShort
+        to->pmove.origin[1] = MSG_ReadPMCoord();
+        to->pmove.origin[2] = MSG_ReadPMCoord();
     }
 
     if (flags & PS_M_VELOCITY) {
@@ -2100,12 +2270,12 @@ void MSG_ParseDeltaPlayerstate_Enhanced(const player_state_t    *from,
         to->pmove.pm_type = MSG_ReadByte();
 
     if (flags & PS_M_ORIGIN) {
-        to->pmove.origin[0] = MSG_ReadShort();
-        to->pmove.origin[1] = MSG_ReadShort();
+        to->pmove.origin[0] = MSG_ReadPMCoord();  //qb: bigmaps, was MSG_ReadShort
+        to->pmove.origin[1] = MSG_ReadPMCoord();
     }
 
     if (extraflags & EPS_M_ORIGIN2)
-        to->pmove.origin[2] = MSG_ReadShort();
+        to->pmove.origin[2] = MSG_ReadPMCoord();  //qb: bigmaps, was MSG_ReadShort
 
     if (flags & PS_M_VELOCITY) {
         to->pmove.velocity[0] = MSG_ReadShort();
@@ -2230,12 +2400,12 @@ void MSG_ParseDeltaPlayerstate_Packet(const player_state_t  *from,
         to->pmove.pm_type = MSG_ReadByte();
 
     if (flags & PPS_M_ORIGIN) {
-        to->pmove.origin[0] = MSG_ReadShort();
-        to->pmove.origin[1] = MSG_ReadShort();
+        to->pmove.origin[0] = MSG_ReadPMCoord();  //qb: bigmaps, was MSG_ReadShort
+        to->pmove.origin[1] = MSG_ReadPMCoord();
     }
 
     if (flags & PPS_M_ORIGIN2)
-        to->pmove.origin[2] = MSG_ReadShort();
+        to->pmove.origin[2] = MSG_ReadPMCoord();  //qb: bigmaps, was MSG_ReadShort
 
     //
     // parse the rest of the player_state_t

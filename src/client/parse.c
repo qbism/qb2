@@ -73,6 +73,10 @@ static void CL_ParseDeltaEntity(server_frame_t           *frame,
     }
 }
 
+#if USE_BITCOUNT_DEBUG  //qb: bit count
+extern int bitc[35];  //count removed ents for debugging
+#endif 
+
 static void CL_ParsePacketEntities(const server_frame_t *oldframe, server_frame_t *frame)
 {
     uint64_t                bits;
@@ -124,6 +128,9 @@ static void CL_ParsePacketEntities(const server_frame_t *oldframe, server_frame_
         }
 
         if (bits & U_REMOVE) {
+#if USE_BITCOUNT_DEBUG           
+            bitc[6]++; //qb: count removed ents
+#endif
             // the entity present in oldframe is not in the current frame
             SHOWNET(2, "   remove: %i\n", newnum);
             if (oldnum != newnum) {
@@ -910,7 +917,12 @@ static void CL_ParseStartSoundPacket(void)
 
     // positioned in space
     if (flags & SND_POS)
-        MSG_ReadPos(snd.pos);
+    {
+        snd.pos[0] = MSG_ReadPMCoord(); //qb: bigmaps
+        snd.pos[1] = MSG_ReadPMCoord();
+        snd.pos[2] = MSG_ReadPMCoord();
+    }
+    snd.flags = flags;
 
     SHOWNET(2, "    %s\n", cl.configstrings[cl.csr.sounds + snd.index]);
 }
