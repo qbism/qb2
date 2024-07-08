@@ -930,8 +930,10 @@ static void set_world_size(void)
             size = temp;
     }
 
-   if (size > 8192)
-        gl_static.world.size = 65536; //qb: bigmaps qbsp practical limit
+      if (size > 32768)
+        gl_static.world.size = 2097152; //qb: bigmaps- theoretically possible, skybox seems OK
+    else if (size > 8192)
+        gl_static.world.size = 65536; //qb: bigmaps- practical limit of map editor
     else if (size > 4096)
         gl_static.world.size = 8192;
     else if (size > 2048)
